@@ -11,7 +11,10 @@ app.use(cors());
 app.use(express.json());
 
 // ربط  مع المسار الرئيسي
-app.use('/api/forex', forexRoutes);
+//app.use('/api/forex', forexRoutes);
+app.get('/', (req, res) => {
+  res.send('✅ Forex Recommendations API is running.');
+});
 
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
