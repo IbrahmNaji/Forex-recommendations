@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Forex Data Analysis</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; direction: ltr; padding: 20px; max-width: 1000px; margin: auto; background: #f9f9fb; }
+    label { margin-right: 10px; }
+    form input, form select { margin-left: 5px; margin-right: 15px; }
+    .chart-container { margin-bottom: 30px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 18px; background: #fff; border-radius: 6px; box-shadow: 0 1px 4px #0001; }
+    th, td { border: 1px solid #eee; padding: 8px; text-align: center; }
+    th { background-color: #f2f2f2; }
+    h3 { margin-top: 18px; }
+    .recommendation.buy {
+      color: red; font-weight: bold; font-size: 1.4em;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.15);
+      background: #ffefef; border-radius: 5px; padding: 4px 16px; margin-left: 15px;
+    }
+    .recommendation.sell {
+      color: blue; font-weight: bold; font-size: 1.4em;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.15);
+      background: #eef5ff; border-radius: 5px; padding: 4px 16px; margin-left: 15px;
+    }
+    .recommendation.neutral {
+      color: #888; font-weight: bold; font-size: 1.4em;
+      background: #f3f3f3; border-radius: 5px; padding: 4px 16px; margin-left: 15px;
+    }
+    .header-flex { display: flex; align-items: center; gap: 22px; }
+  </style>
+</head>
+<body>
+  <div class="header-flex">
+    <h1>Forex Data Analysis</h1>
+    <form id="forex-form" style="margin:0;">
+      <label for="pair">Currency Pair:</label>
+      <select id="pair" required>
+        <option value="EUR/USD" selected>EUR/USD</option>
+        <option value="GBP/USD">GBP/USD</option>
+        <option value="USD/JPY">USD/JPY</option>
+        <option value="AUD/USD">AUD/USD</option>
+        <option value="USD/CAD">USD/CAD</option>
+        <option value="USD/CHF">USD/CHF</option>
+        <option value="NZD/USD">NZD/USD</option>
+        <option value="GBP/JPY">GBP/JPY</option>
+      </select>
+      <label for="period">Period (days):</label>
+      <input type="number" id="period" value="20" min="2" required style="width:80px;" />
+      <button type="submit">Load Data</button>
+    </form>
+  </div>
+
+  <div class="chart-container">
+    <canvas id="chart" width="850" height="340" style="margin-bottom: 22px; background:#fff; border-radius:10px; box-shadow:0 1px 6px #0001;"></canvas>
+    <div id="result"></div>
+  </div>
+
+  <script>
+    let chartInstance = null;
+    let updateInterval = null;
+
+    let currentFromSymbol = null;
+    let currentToSymbol = null;
+    let currentPeriod = null;
+
+    function formatRecommendation(rec) {
+      if (!rec) return '<span class="recommendation neutral">-</span>';
+      if (rec.toLowerCase().includes('buy')) {
+        return `<span class="recommendation buy">${rec}</span>`;
+      }
+      if (rec.toLowerCase().includes('sell')) {
+        return `<span class="recommendation sell">${rec}</span>`;
+      }
+      return `<span class="recommendation neutral">${rec}</span>`;
+    }
+
+    async function fetchAndDisplayData() {
+      if (!currentFromSymbol || !currentToSymbol || !currentPeriod) return;
+
+      document.getElementById('result').innerHTML = '⏳ Loading data...';
+
+      try {
+        const res = await fetch(`http://localhost:5000/api/forex?from_symbol=${currentFromSymbol}&to_symbol=${currentToSymbol}&period=${currentPeriod}`);
+        const data = await res.json();
+
+        if (data.error) {
+          document.getElementById('result').innerHTML = `<span style="color:red">${data.error}</span>`;
+          return;
+        }
+
+        // جدول تنازلي: أحدث تاريخ أول صف
+        document.getElementById('result').innerHTML = `
+          <h3>Latest Recommendation: ${formatRecommendation(data.recommendation)}</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Close Price</th>
+                <th>SMA</th>
+                <th>EMA</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${
+                data.values.slice().reverse().map((v, i) => {
+                  const idx = data.sma.length - 1 - i;
+                  return `
+                    <tr>
+                      <td>${v.datetime}</td>
+                      <td>${v.close}</td>
+                      <td>${(data.sma[idx] !== null && data.sma[idx] !== undefined) ? data.sma[idx] : '-'}</td>
+                      <td>${(data.ema[idx] !== null && data.ema[idx] !== undefined) ? data.ema[idx] : '-'}</td>
+                    </tr>
+                  `;
+                }).join('')
+              }
+            </tbody>
+          </table>
+        `;
+
+        drawChart(data.values, data.sma, data.ema);
+
+      } catch (err) {
+        document.getElementById('result').innerHTML = `<span style="color:red">Error connecting to server!</span>`;
+      }
+    }
+
+    function drawChart(values, sma, ema) {
+      const ctx = document.getElementById('chart').getContext('2d');
+      const labels = values.map(v => v.datetime);
+      const prices = values.map(v => parseFloat(v.close));
+      const smaData = sma.slice();
+      const emaData = ema.slice();
+
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Price',
+              data: prices,
+              borderColor: 'blue',
+              fill: false,
+              spanGaps: true
+            },
+            {
+              label: 'SMA',
+              data: smaData,
+              borderColor: 'orange',
+              borderDash: [5, 5],
+              fill: false,
+              spanGaps: true
+            },
+            {
+              label: 'EMA',
+              data: emaData,
+              borderColor: 'green',
+              borderDash: [2, 2],
+              fill: false,
+              spanGaps: true
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: true },
+            tooltip: { enabled: true }
+          },
+          scales: {
+            x: { title: { display: true, text: 'Date' } },
+            y: { title: { display: true, text: 'Price' } }
+          }
+        }
+      });
+    }
+
+    document.getElementById('forex-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      // Store values for auto-update
+      const pair = document.getElementById('pair').value;
+      const [from_symbol, to_symbol] = pair.split('/');
+      const period = parseInt(document.getElementById('period').value);
+
+      currentFromSymbol = from_symbol;
+      currentToSymbol = to_symbol;
+      currentPeriod = period;
+
+      fetchAndDisplayData();
+
+      // Clear old interval and start new auto-update
+      if (updateInterval) clearInterval(updateInterval);
+      updateInterval = setInterval(fetchAndDisplayData, 5000);
+    });
+
+    // Auto-load data on first visit
+    window.onload = () => {
+      document.getElementById('forex-form').dispatchEvent(new Event('submit'));
+    }
+  </script>
+</body>
+</html>
