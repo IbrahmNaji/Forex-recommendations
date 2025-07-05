@@ -14,13 +14,14 @@ app.use(express.json());
 // API routes
 app.use('/api/forex', forexRoutes);
 
-// تقديم ملفات الواجهة (HTML/CSS/JS) من مجلد "public"
-app.use(express.static(path.join(__dirname, 'public')));
+const path = require('path');
 
-// عند أي طلب غير معروف (غير API)، رجّع index.html
+app.use(express.static(path.join(__dirname, 'front-end')));
+
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'front-end', 'index.html'));
 });
+
 
 // تشغيل السيرفر
 app.listen(PORT, () => {
