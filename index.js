@@ -14,16 +14,14 @@ app.use(express.json());
 // API routes
 app.use('/api/forex', forexRoutes);
 
-const path = require('path');
-
+// Serve frontend static files from 'front-end' folder
 app.use(express.static(path.join(__dirname, 'front-end')));
 
+// For any other routes, serve index.html from 'front-end'
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'front-end', 'index.html'));
 });
 
-
-// تشغيل السيرفر
 app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
