@@ -81,7 +81,7 @@
       document.getElementById('result').innerHTML = '⏳ Loading data...';
 
       try {
-        const res = await fetch(`http://localhost:5000/api/forex?from_symbol=${currentFromSymbol}&to_symbol=${currentToSymbol}&period=${currentPeriod}`);
+const res = await fetch(`/api/forex?from_symbol=${currentFromSymbol}&to_symbol=${currentToSymbol}&period=${currentPeriod}`);
         const data = await res.json();
 
         if (data.error) {
