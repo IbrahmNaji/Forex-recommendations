@@ -17,8 +17,8 @@ app.use('/api/forex', forexRoutes);
 // Serve frontend static files from 'front-end' folder
 app.use(express.static(path.join(__dirname, 'front-end')));
 
-// For any other routes, serve index.html from 'front-end'
-app.get('*', (req, res) => {
+// For any non-API routes, serve index.html (fix for Render/Node 22 issue)
+app.get(/^\/(?!api).*/, (req, res) => {
   res.sendFile(path.join(__dirname, 'front-end', 'index.html'));
 });
 
