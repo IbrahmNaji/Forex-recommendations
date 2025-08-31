@@ -197,7 +197,7 @@ const res = await fetch(`/api/forex?from_symbol=${currentFromSymbol}&to_symbol=$
 
       // Clear old interval and start new auto-update
       if (updateInterval) clearInterval(updateInterval);
-      updateInterval = setInterval(fetchAndDisplayData, 15000);
+      updateInterval = setInterval(fetchAndDisplayData, 1500000);
     });
 
     // Auto-load data on first visit
